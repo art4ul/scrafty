@@ -1,0 +1,17 @@
+package com.art4ul.raft.protocol;
+
+message Response {
+    required int32 term          =  1;
+    oneof type {
+        AppendEntryResult appendEntryResult = 2;
+        RequestVoteResult requestVoteResult = 3;
+    }
+}
+
+message AppendEntryResult {
+    required bool result = 1;
+}
+
+message RequestVoteResult {
+    required bool result = 1;
+}
