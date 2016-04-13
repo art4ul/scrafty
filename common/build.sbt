@@ -1,6 +1,6 @@
-name := "scrafty-common"
+name := "common"
 
-organization := "com.art4ul"
+organization := "com.art4ul.scrafty"
 
 version := "0.0.1-SNAPSHOT"
 

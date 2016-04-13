@@ -1,6 +1,6 @@
-name := "scrafty-server"
+name := "core"
 
-organization := "com.art4ul"
+organization := "com.art4ul.scrafty"
 
 version := "0.0.1-SNAPSHOT"
 
