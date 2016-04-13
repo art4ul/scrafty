@@ -1,4 +1,4 @@
-name := "scraftty"
+name := "scrafty-server"
 
 organization := "com.art4ul"
 
@@ -10,7 +10,6 @@ libraryDependencies ++= {
   val akkaVersion = "2.3.9"
   Seq(
     "com.twitter" %% "chill" % "0.8.0",
-//    "com.twitter" % "chill-bijection_2.11" % "0.8.0",
     "com.typesafe.akka" %% "akka-actor" % akkaVersion,
     //"com.typesafe.akka" %% "akka-slf4j" % akkaVersion,
     //"com.typesafe.akka" %% "akka-testkit" % akkaVersion % "test",

@@ -1,5 +1,4 @@
-/app/*.jar
-/src/generated
+/test-env
 *.class
 *.log
 
