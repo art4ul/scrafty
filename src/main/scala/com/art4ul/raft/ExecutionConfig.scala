@@ -31,12 +31,9 @@ object ExecutionConfig {
   val host = config.getString("host")
   val port = config.getInt("port")
 
-  val socketTimeout = 5000
-
-  val electionTimeoutMs = 3000
-
-  val electionPeriodMs = 3000
-
-  val heartBeatTimeoutMs = 300
+  val socketTimeout = config.getInt("socketTimeout")
+  val electionTimeoutMs = config.getInt("electionTimeout")
+  val electionPeriodMs = config.getInt("electionPeriod")
+  val heartBeatTimeoutMs = config.getInt("heartBeatTimeout")
 
 }

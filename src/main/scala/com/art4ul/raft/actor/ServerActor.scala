@@ -17,15 +17,14 @@
 
 package com.art4ul.raft.actor
 
+import java.io.ByteArrayOutputStream
+
 import akka.actor.{Actor, ActorRef, Props}
 import akka.io.Tcp._
-import akka.pattern._
-import akka.util.{ByteString, Timeout}
-import com.art4ul.raft.protocol.Request
+import akka.util.ByteString
 import com.art4ul.raft.state._
-
-import scala.concurrent.Await
-import scala.util.{Failure, Success, Try}
+import com.esotericsoftware.kryo.io.{Input, Output}
+import com.twitter.chill.ScalaKryoInstantiator
 
 /**
   * Created by artsemsemianenka on 3/29/16.
@@ -37,7 +36,7 @@ class ServerActor(handlerProps: Props) extends Actor {
 
     case CommandFailed(_: Bind) => context stop self
 
-    case c@Connected(remote, local) =>
+    case Connected(remote, local) =>
       val handler = context.actorOf(handlerProps)
       val connection = sender()
       connection ! Register(handler)
@@ -50,22 +49,26 @@ object ServerActor {
 
 class ConnectionHandlerActor(raftActor: ActorRef) extends Actor {
 
-  import ProtoConverter._
-  import scala.concurrent.duration._
+  var connection: Option[ActorRef] = None
+  val instantiator = new ScalaKryoInstantiator().setRegistrationRequired(false)
+  val kryo = instantiator.newKryo()
 
   override def receive = {
-    case
-      Received(data) =>
-      implicit val timeOut = Timeout(1 seconds)
-      val request = Request.parseFrom(data.toByteBuffer.array()).toRaftMessage
-      Try(Await.result(raftActor ? request, timeOut.duration)) match {
-        case Success(resp: RaftResponse) =>
-          val byteArray = ByteString(resp.toProto.toByteArray)
-          sender() ! Write(byteArray)
-          sender() ! Close
+    case Received(data) =>
+      val input = new Input(data.toByteBuffer.array)
+      val request = kryo.readClassAndObject(input)
+      connection = Some(sender)
+      raftActor ! request
+      input.close()
 
-        case Failure(ex) => println("Execption:ex")
-      }
+
+    case resp: RaftResponse => connection.foreach { connectionRef =>
+      val output = new Output(new ByteArrayOutputStream())
+      kryo.writeClassAndObject(output, resp)
+      connectionRef ! Write(ByteString(output.toBytes))
+      output.close()
+      connectionRef ! Close
+    }
 
     case PeerClosed => context stop self
   }

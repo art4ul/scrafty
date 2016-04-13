@@ -20,10 +20,10 @@ package com.art4ul.raft.client
 import java.net.{InetAddress, Socket}
 
 import com.art4ul.raft.ExecutionConfig
-import com.art4ul.raft.protocol.Response
-import com.art4ul.raft.state.ProtoConverter._
-import com.art4ul.raft.state.{RaftRequest, RaftResponse}
+import com.art4ul.raft.state._
 import com.art4ul.raft.utils.Manageable._
+import com.esotericsoftware.kryo.io.{Input, Output}
+import com.twitter.chill.ScalaKryoInstantiator
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
@@ -34,13 +34,19 @@ import scala.concurrent.Future
 object Client {
 
   def apply(host: String, port: Int = ExecutionConfig.port)(request: RaftRequest): Future[RaftResponse] = {
+    val instantiator = new ScalaKryoInstantiator().setRegistrationRequired(false)
+    val kryo = instantiator.newKryo()
+
     Future(using(new Socket(InetAddress.getByName(host), port)) { socket =>
       socket.setSoTimeout(ExecutionConfig.socketTimeout)
-      val output = socket.getOutputStream()
-      output.write(request.toProto.toByteArray)
-      val input = socket.getInputStream()
-      val result = Response.parseFrom(input)
-      result.toRaftMessage
+      val output = new Output(socket.getOutputStream)
+      kryo.writeClassAndObject(output, request)
+      output.flush()
+      val input = new Input(socket.getInputStream)
+      val result = kryo.readClassAndObject(input)
+      input.close()
+      output.close()
+      result.asInstanceOf[RaftResponse]
     })
   }
 

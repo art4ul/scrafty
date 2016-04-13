@@ -1,2 +1,2 @@
-rm raft-assembly-1.0.jar
-cp ../target/scala-2.11/raft-assembly-1.0.jar .
+rm scraftty-assembly-0.0.1-SNAPSHOT.jar
+cp ../target/scala-2.11/scraftty-assembly-0.0.1-SNAPSHOT.jar .

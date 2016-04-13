@@ -35,18 +35,6 @@ class RaftActor(id: String, servers: Map[String, (RaftRequest) => Future[RaftRes
 
   startWith(Follower, FollowerData())
 
-  //  def handleRequest[S, D](function: () => (FSM.State[S, D], RaftResponse)): FSM.State[S, D] = {
-  //    val (state, response) = function()
-  //    sender ! response
-  //    state
-  //  }
-
-  def handleRequest[S, D](request: RaftRequest)(function: PartialFunction[Int, (FSM.State[S, D], RaftResponse)]): FSM.State[S, D] = {
-    val (state, response) = function(request.term)
-    sender ! response
-    state
-  }
-
   when(Follower, electionTimeout) {
     case Event(msg: AppendEntryRequest, data: FollowerData) =>
       logState(s"message:$msg")
@@ -71,14 +59,12 @@ class RaftActor(id: String, servers: Map[String, (RaftRequest) => Future[RaftRes
   }
 
   when(Candidate, stateTimeout = electionPeriod) {
-
     case Event(msg@StateTimeout, data: CandidateData) =>
       logState(s"message:$msg")
       if (isVotesReached(data.votes)) {
         goto(Leader) using (LeaderData(data.currentTerm))
       } else {
-        setStateTimeout(Follower, Some(electionTimeout))
-        goto(Follower) using FollowerData(data.currentTerm)
+        goto(Follower).forMax(electionTimeout) using FollowerData(data.currentTerm)
       }
 
     case Event(voteResponse: VoteResponse, data: CandidateData) =>
@@ -89,46 +75,17 @@ class RaftActor(id: String, servers: Map[String, (RaftRequest) => Future[RaftRes
       } else {
         stay using data.copy(votes = votes)
       }
-
-    //    case Event(msg: AppendEntryRequest, data: CandidateData) =>
-    //      logState(s"message:$msg")
-    //      handleRequest(msg) {
-    //        case term if (term > data.currentTerm) =>
-    //          goto(Follower).using(FollowerData(term, Some(msg.leaderId))) -> AppendEntryResponse(term, true)
-    //
-    //        case _ => stay -> AppendEntryResponse(data.currentTerm, false)
-    //      }
-
-    //    case Event(msg: VoteRequest, data: CandidateData) =>
-    //      logState(s"message:$msg")
-    //      handleRequest(msg) {
-    //        case term if (term > data.currentTerm) =>
-    //          goto(Follower).using(FollowerData(term, votedFor = Some(msg.candidateId))) -> VoteResponse(term, true)
-    //
-    //        case _ => stay -> VoteResponse(data.currentTerm, false)
-    //      }
   }
 
   when(Leader, stateTimeout = heartBeatTimeout) {
-
     case Event(msg@StateTimeout, data: LeaderData) =>
       logState(s"message:$msg")
       sendHeartBeat(data.currentTerm)
-      stay using data
-
+      stay
 
     case Event(response: AppendEntryResponse, data: LeaderData) =>
       logState(s"message:$response")
-      stay using data
-
-    //    case Event(msg: VoteRequest, data: LeaderData) =>
-    //      logState(s"message:$msg")
-    //      handleRequest(msg) {
-    //        case term if (term > data.currentTerm) =>
-    //          goto(Follower).using(FollowerData(term,votedFor = Some(msg.candidateId))) -> VoteResponse(term, true)
-    //
-    //        case _ => stay -> VoteResponse(data.currentTerm, false)
-    //      }
+      stay
   }
 
   whenUnhandled {
@@ -167,6 +124,12 @@ class RaftActor(id: String, servers: Map[String, (RaftRequest) => Future[RaftRes
 
   initialize()
 
+  def handleRequest[S, D](request: RaftRequest)(function: PartialFunction[Int, (FSM.State[S, D], RaftResponse)]): FSM.State[S, D] = {
+    val (state, response) = function(request.term)
+    sender ! response
+    state
+  }
+
   def isVotesReached(votes: Int) = votes >= (servers.size + 1) / 2 + 1
 
   def startElection(term: Int): Unit = {
@@ -188,7 +151,7 @@ class RaftActor(id: String, servers: Map[String, (RaftRequest) => Future[RaftRes
     val randomize = new Random()
     val initTimeout = ExecutionConfig.electionTimeoutMs
     val timeout = initTimeout + randomize.nextInt(initTimeout.toInt)
-    println(s"resetElectTimeout:$timeout")
+    println(s"electTimeout:$timeout")
     new FiniteDuration(timeout, TimeUnit.MILLISECONDS)
   }
 

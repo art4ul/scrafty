@@ -1,31 +1,21 @@
-import com.trueaccord.scalapb.{ScalaPbPlugin => PB}
-
-name := "raft"
+name := "scraftty"
 
 organization := "com.art4ul"
 
-version := "1.0"
+version := "0.0.1-SNAPSHOT"
 
 scalaVersion := "2.11.8"
 
 libraryDependencies ++= {
   val akkaVersion = "2.3.9"
   Seq(
+    "com.twitter" %% "chill" % "0.8.0",
+//    "com.twitter" % "chill-bijection_2.11" % "0.8.0",
     "com.typesafe.akka" %% "akka-actor" % akkaVersion,
     //"com.typesafe.akka" %% "akka-slf4j" % akkaVersion,
     //"com.typesafe.akka" %% "akka-testkit" % akkaVersion % "test",
     "com.typesafe" % "config" % "1.3.0"
   )}
-
-PB.protobufSettings
-
-PB.flatPackage in PB.protobufConfig := true
-
-PB.generatedTargets in PB.protobufConfig :=
-  Seq((sourceDirectory.value / "generated" / "scala", "*.scala"))
-
-PB.runProtoc in PB.protobufConfig := (args =>
-  com.github.os72.protocjar.Protoc.runProtoc("-v261" +: args.toArray))
 
 assemblyOption in assembly := (assemblyOption in assembly).value.copy(includeScala = false)
 

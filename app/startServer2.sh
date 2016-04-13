@@ -1,2 +1,2 @@
 #/bin/bash
-scala raft-assembly-1.0.jar -Dconfig.resource=server2.conf
+scala scraftty-assembly-0.0.1-SNAPSHOT.jar -Dconfig.resource=server2.conf
