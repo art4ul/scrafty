@@ -15,12 +15,12 @@
  * limitations under the License.
  */
 
-package com.art4ul.raft.utils
+package com.art4ul.scrafty.utils
 
 /**
   * Created by artsemsemianenka on 3/30/16.
   */
-object Manageable {
+object Disposable {
 
   def using[T, R <: AutoCloseable](resource: R)(func: R => T): T = {
     try {

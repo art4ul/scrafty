@@ -19,36 +19,45 @@ package com.art4ul.raft.client
 
 import java.net.{InetAddress, Socket}
 
-import com.art4ul.raft.ExecutionConfig
-import com.art4ul.raft.state._
-import com.art4ul.raft.utils.Manageable._
-import com.esotericsoftware.kryo.io.{Input, Output}
-import com.twitter.chill.ScalaKryoInstantiator
+import com.art4ul.scrafty.protocol.{Request, Response}
+import com.art4ul.scrafty.utils.Disposable._
+import com.twitter.chill.{Input, Output, ScalaKryoInstantiator}
 
-import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 
 /**
   * Created by artsemsemianenka on 3/30/16.
   */
-object Client {
+trait Client {
+  def send(request: Request): Future[Response]
+}
 
-  def apply(host: String, port: Int = ExecutionConfig.port)(request: RaftRequest): Future[RaftResponse] = {
+import com.art4ul.raft.client.TcpClient._
+
+class TcpClient(host: String, port: Int, timeOut: Int = DefaultSocketTimeout)
+               (implicit executionContext: ExecutionContext) extends Client {
+
+  def send(request: Request): Future[Response] = {
     val instantiator = new ScalaKryoInstantiator().setRegistrationRequired(false)
     val kryo = instantiator.newKryo()
-
-    Future(using(new Socket(InetAddress.getByName(host), port)) { socket =>
-      socket.setSoTimeout(ExecutionConfig.socketTimeout)
-      val output = new Output(socket.getOutputStream)
-      kryo.writeClassAndObject(output, request)
-      output.flush()
-      val input = new Input(socket.getInputStream)
-      val result = kryo.readClassAndObject(input)
-      input.close()
-      output.close()
-      result.asInstanceOf[RaftResponse]
+    Future(using(new Socket(InetAddress.getByName(host), port)) {
+      socket =>
+        socket.setSoTimeout(timeOut)
+        val output = new Output(socket.getOutputStream)
+        kryo.writeClassAndObject(output, request)
+        output.flush()
+        val input = new Input(socket.getInputStream)
+        val result = kryo.readClassAndObject(input)
+        input.close()
+        output.close()
+        result.asInstanceOf[Response]
     })
   }
-
-
 }
+
+object TcpClient {
+  val DefaultSocketTimeout = 5000
+}
+
+
+

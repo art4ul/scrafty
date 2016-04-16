@@ -17,6 +17,8 @@
 
 package com.art4ul.raft.state
 
+import akka.actor.ActorRef
+
 /**
   * Created by artsemsemianenka on 4/9/16.
   */
@@ -31,15 +33,25 @@ case object Candidate extends State
 
 
 // Data
-sealed trait Data {
-  val currentTerm: Int
-}
+case class Data(currentTerm: Int = 1,
+                log: IndexedSeq[CommandModel] = IndexedSeq(),
+                votedFor: Option[String] = None,
+                commitIndex: Int = 0,
+                lastApplied: Int = 0,
+                votes: Int = 0)
 
-case class FollowerData(override val currentTerm: Int = 1,
-                        leader: Option[String] = None,
-                        votedFor: Option[String] = None) extends Data
 
-case class CandidateData(override val currentTerm: Int,
-                         votes: Int) extends Data
+//case class FollowerData(override val currentTerm: Int = 1,
+//                        leader: Option[String] = None,
+//                        votedFor: Option[String] = None) extends Data
+//
+//case class CandidateData(override val currentTerm: Int,
+//                         votes: Int) extends Data
 
-case class LeaderData(override val currentTerm: Int) extends Data
+
+case class CommandModel(term: Int, command: String, connectionRef: ActorRef, commited: Boolean = false)
+
+//case class LeaderData(override val currentTerm: Int,
+//                      log: IndexedSeq[CommandModel] = IndexedSeq(),
+//                      commitIndex: Int = 0,
+//                      lastApplied: Int = 0) extends Data

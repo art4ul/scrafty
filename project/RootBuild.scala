@@ -1,6 +1,6 @@
 import sbt._
 
-object AdServingSegmentBuild extends Build {
+object RootBuild extends Build {
   lazy val common = ProjectRef(file("common"), "common")
   lazy val core = ProjectRef(file("core"), "core")
   lazy val client = ProjectRef(file("client"), "client")

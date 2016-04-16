@@ -23,11 +23,11 @@ import akka.actor.ActorSystem
 import akka.io.Tcp.Bind
 import akka.io.{IO, Tcp}
 import com.art4ul.raft.actor._
-import com.art4ul.raft.client.Client
-import com.art4ul.raft.state.{RaftRequest, RaftResponse}
-
+import com.art4ul.raft.client.{Client, TcpClient}
+import com.art4ul.raft.server.{ConnectionHandlerActor, ServerActor}
+import com.art4ul.scrafty.utils.UrlUtil
 import scala.collection.JavaConversions._
-import scala.concurrent.Future
+import scala.concurrent.ExecutionContext.Implicits.global
 
 /**
   * Created by artsemsemianenka on 3/29/16.
@@ -37,9 +37,9 @@ object Main extends App {
   println(s"Start $serverId")
   implicit val actorSystem = ActorSystem("raft-actor-system")
 
-  val servers: Map[String, (RaftRequest) => Future[RaftResponse]] = ExecutionConfig.servers.map { line =>
-    val separated = line.split(":")
-    line -> Client(separated(0), separated(1).toInt) _
+  val servers: Map[String, Client] = ExecutionConfig.servers.map { line =>
+    val (host, port) = UrlUtil.parseHostAndPort(line)
+    line -> new TcpClient(host, port)
   }.toMap
 
   val raftActor = actorSystem.actorOf(RaftActor.props(serverId, servers))

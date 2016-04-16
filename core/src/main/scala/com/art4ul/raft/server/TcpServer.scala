@@ -15,16 +15,18 @@
  * limitations under the License.
  */
 
-package com.art4ul.raft.actor
+package com.art4ul.raft.server
 
 import java.io.ByteArrayOutputStream
 
 import akka.actor.{Actor, ActorRef, Props}
 import akka.io.Tcp._
 import akka.util.ByteString
-import com.art4ul.raft.state._
+import com.art4ul.scrafty.protocol.Response
 import com.esotericsoftware.kryo.io.{Input, Output}
 import com.twitter.chill.ScalaKryoInstantiator
+
+import scala.util.{Failure, Success, Try}
 
 /**
   * Created by artsemsemianenka on 3/29/16.
@@ -47,6 +49,8 @@ object ServerActor {
   def props(handlerProps: Props) = Props(classOf[ServerActor], handlerProps)
 }
 
+import com.art4ul.scrafty.utils.Disposable._
+
 class ConnectionHandlerActor(raftActor: ActorRef) extends Actor {
 
   var connection: Option[ActorRef] = None
@@ -55,19 +59,25 @@ class ConnectionHandlerActor(raftActor: ActorRef) extends Actor {
 
   override def receive = {
     case Received(data) =>
-      val input = new Input(data.toByteBuffer.array)
-      val request = kryo.readClassAndObject(input)
-      connection = Some(sender)
-      raftActor ! request
-      input.close()
+      using(new Input(data.toByteBuffer.array)) { input =>
+        Try(kryo.readClassAndObject(input)) match {
+          case Success(request) =>
+            connection = Some(sender)
+            raftActor ! request
 
+          case Failure(ex) =>
+            ex.printStackTrace()
+            sender ! Close
+        }
+      }
 
-    case resp: RaftResponse => connection.foreach { connectionRef =>
-      val output = new Output(new ByteArrayOutputStream())
-      kryo.writeClassAndObject(output, resp)
-      connectionRef ! Write(ByteString(output.toBytes))
-      output.close()
-      connectionRef ! Close
+    case resp: Response => connection.foreach { connectionRef =>
+      using(new Output(new ByteArrayOutputStream())) { output =>
+        kryo.writeClassAndObject(output, resp)
+        connectionRef ! Write(ByteString(output.toBytes))
+//        output.flush()
+        connectionRef ! Close
+      }
     }
 
     case PeerClosed => context stop self
